@@ -117,6 +117,13 @@ const ctx = canvas.getContext('2d');
 const fileInput = document.getElementById('fileInput');
 let cardW, cardH, cols, dpr;
 
+// 滾動相關變數
+let scrollY = 0;
+let isDragging = false;
+let startY = 0;
+let lastY = 0;
+let totalHeight = 0;
+
 async function initDB() {
     return new Promise(resolve => {
         const request = indexedDB.open(DB_NAME, 2);
@@ -198,8 +205,22 @@ function resize() {
     cols = window.innerWidth > 600 ? 3 : 2;
     const padding = 15;
     cardW = (window.innerWidth - (padding * (cols + 1))) / cols;
-    cardH = cardW * 1.85; // 再加長格子高度，確保按鈕有專屬空間
+    cardH = cardW * 1.85; 
+    
+    // 計算總高度
+    const rows = Math.ceil(plants.length / cols);
+    const topOffset = 25 + (window.innerHeight > 800 ? 25 : 0);
+    totalHeight = topOffset + rows * (cardH + padding) + 120; // 底部留白讓按鈕不遮擋
+    
+    // 檢查 scrollY 是否超出新界限
+    clampScroll();
     render();
+}
+
+function clampScroll() {
+    const maxScroll = Math.max(0, totalHeight - window.innerHeight);
+    if (scrollY > maxScroll) scrollY = maxScroll;
+    if (scrollY < 0) scrollY = 0;
 }
 
 const imageCache = new Map();
@@ -211,8 +232,12 @@ function render() {
     
     plants.forEach((p, i) => {
         const x = padding + (i % cols) * (cardW + padding);
-        const y = topOffset + Math.floor(i / cols) * (cardH + padding);
+        // 套用 scrollY 偏移
+        const y = topOffset + Math.floor(i / cols) * (cardH + padding) - scrollY;
         p.rect = { x, y, w: cardW, h: cardH };
+
+        // 只繪製在畫面內的卡片以節省效能
+        if (y + cardH < 0 || y > window.innerHeight) return;
 
         // 卡片背景
         ctx.fillStyle = "white";
@@ -233,23 +258,19 @@ function render() {
             }
         }
 
-        // 文字排版 - 嚴格垂直間距
+        // 文字排版
         const textStartX = x + 14;
-        const textStartY = y + cardW + 25; // 照片下方開始
+        const textStartY = y + cardW + 25;
         
         ctx.fillStyle = "#2d3436"; ctx.font = "bold 18px -apple-system";
         ctx.fillText(truncate(p.name, 9), textStartX, textStartY);
         
         ctx.font = "13px -apple-system";
-        // 澆水行 (Y + 24)
         ctx.fillStyle = p.thirstIndex >= 1 ? "#e74c3c" : "#636e72";
         ctx.fillText(`${p.daysAgo} 天前澆水 (${p.lastDateFmt})`, textStartX, textStartY + 24);
         
-        // 施藥行 (Y + 44)
         ctx.fillStyle = "#95a5a6";
         ctx.fillText(`💊 施藥: ${p.lastMedFmt}`, textStartX, textStartY + 44);
-        
-        // 施肥行 (Y + 64)
         ctx.fillText(`✨ 施肥: ${p.lastFertFmt}`, textStartX, textStartY + 64);
 
         // 缺水標記
@@ -270,7 +291,7 @@ function render() {
             ctx.fillText("✓", x + cardW - 25, y + 31); ctx.textAlign="left";
         }
 
-        // 底部按鈕區 - 將按鈕推向卡片最底部，並增加背景圓圈
+        // 底部按鈕區
         const btnRowY = y + cardH - 38;
         const btnSpacing = cardW / 3;
         
@@ -279,10 +300,8 @@ function render() {
         p.btnFert = { x: x + (btnSpacing*2.5) - 22, y: btnRowY - 22, w: 44, h: 44 };
 
         [p.btnWater, p.btnMed, p.btnFert].forEach((btn, idx) => {
-            // 按鈕灰色背景
             ctx.fillStyle = "#f1f2f6";
             ctx.beginPath(); ctx.arc(btn.x + 22, btn.y + 22, 20, 0, Math.PI*2); ctx.fill();
-            // 圖示
             const icon = ["💧", "🧪", "💩"][idx];
             ctx.font = "24px Arial"; ctx.textAlign = "center";
             ctx.fillText(icon, btn.x + 22, btn.y + 30); ctx.textAlign = "left";
@@ -290,14 +309,62 @@ function render() {
     });
 }
 
-/** 5. 互動處理 **/
-canvas.addEventListener('mousedown', handleClick);
-canvas.addEventListener('touchstart', e => { e.preventDefault(); handleClick(e.touches[0]); }, {passive: false});
+/** 5. 互動處理 (滑動與點擊) **/
+
+// 處理滾動
+canvas.addEventListener('touchstart', e => {
+    isDragging = true;
+    startY = e.touches[0].pageY;
+    lastY = startY;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+    if (!isDragging) return;
+    const currentY = e.touches[0].pageY;
+    const delta = lastY - currentY;
+    scrollY += delta;
+    lastY = currentY;
+    clampScroll();
+    render();
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+    isDragging = false;
+    // 如果移動距離很小，視為點擊
+    if (Math.abs(e.changedTouches[0].pageY - startY) < 5) {
+        handleClick(e.changedTouches[0]);
+    }
+}, { passive: false });
+
+// 支援滑鼠滾動
+canvas.addEventListener('mousedown', e => {
+    isDragging = true;
+    startY = e.pageY;
+    lastY = startY;
+});
+
+window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const currentY = e.pageY;
+    const delta = lastY - currentY;
+    scrollY += delta;
+    lastY = currentY;
+    clampScroll();
+    render();
+});
+
+window.addEventListener('mouseup', e => {
+    if (!isDragging) return;
+    isDragging = false;
+    if (Math.abs(e.pageY - startY) < 5) {
+        handleClick(e);
+    }
+});
 
 function handleClick(e) {
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX || e.pageX) - rect.left;
-    const my = (e.clientY || e.pageY) - rect.top;
+    const my = (e.clientY || e.pageY) - rect.top; // 這裡不加 scrollY，因為 p.rect 已經包含偏移了
     let hit = false;
 
     plants.forEach(p => {
@@ -326,7 +393,9 @@ fileInput.onchange = async e => {
     const freq = parseInt(document.getElementById('plantFreq').value) || 3;
     const imgData = await processImage(e.target.files[0]);
     const newP = { id: "p_"+Date.now(), name, freq, imageStr: imgData, lastWatered: Date.now(), lastFertilized: 0, lastMedicated: 0, selected: false };
-    plants.push(newP); saveData(newP); processAndSort(); closeModal();
+    plants.push(newP); saveData(newP); processAndSort(); 
+    resize(); // 重新計算高度
+    closeModal();
     document.getElementById('emptyState').style.display = 'none'; render(); fileInput.value = ""; 
 };
 
@@ -358,6 +427,7 @@ function batchDelete() {
         sel.forEach(p => deleteFromDB(p.id));
         plants = plants.filter(p => !p.selected);
         if(!plants.length) document.getElementById('emptyState').style.display='block';
+        resize(); // 重新計算高度
         updateBatchUI(); render();
     }
 }
