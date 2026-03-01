@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>綠植管家 - 視覺化澆水提醒</title>
-    <!-- iOS 專屬全螢幕設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="綠植管家">
@@ -15,105 +14,50 @@
             --info: #3498db;
             --bg: #f8f9fa;
         }
-        /* 考慮到 iPhone 的安全區域 */
         body { 
             margin: 0; 
             background: var(--bg); 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             overflow: hidden; 
             touch-action: none;
-            /* 避免被 iPhone 底層橫條遮住 */
             padding-bottom: env(safe-area-inset-bottom);
         }
         canvas { display: block; width: 100%; height: 100%; }
-        
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        
         .btn { 
-            pointer-events: auto; 
-            border: none; 
-            padding: 12px 24px; 
-            border-radius: 25px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
-            transition: transform 0.1s;
-            -webkit-tap-highlight-color: transparent; /* 移除 iOS 點擊藍色框 */
+            pointer-events: auto; border: none; padding: 12px 24px; border-radius: 25px; 
+            font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+            transition: transform 0.1s; -webkit-tap-highlight-color: transparent;
         }
         .btn:active { transform: scale(0.95); opacity: 0.8; }
         .btn-main { background: var(--primary); color: white; }
-        
-        /* 底部按鈕組考慮安全區域 */
         .btn-group { 
-            position: fixed; 
-            bottom: calc(30px + env(safe-area-inset-bottom)); 
-            left: 50%; 
-            transform: translateX(-50%); 
-            display: flex; 
-            gap: 15px; 
+            position: fixed; bottom: calc(30px + env(safe-area-inset-bottom)); 
+            left: 50%; transform: translateX(-50%); display: flex; gap: 15px; 
         }
-        
         .batch-panel { 
-            position: fixed; 
-            top: calc(20px + env(safe-area-inset-top)); 
-            left: 50%; 
-            transform: translateX(-50%); 
-            background: rgba(255, 255, 255, 0.95); 
-            padding: 15px; 
-            border-radius: 20px; 
-            box-shadow: 0 8px 30px rgba(0,0,0,0.15); 
-            display: none; 
-            flex-direction: column; 
-            align-items: center; 
-            gap: 10px; 
-            z-index: 100; 
-            pointer-events: auto; 
-            width: 85%; 
-            max-width: 420px;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            position: fixed; top: calc(20px + env(safe-area-inset-top)); 
+            left: 50%; transform: translateX(-50%); 
+            background: rgba(255, 255, 255, 0.95); padding: 15px; border-radius: 20px; 
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: none; flex-direction: column; 
+            align-items: center; gap: 10px; z-index: 100; pointer-events: auto; width: 85%; max-width: 420px;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
-        
         #fileInput { display: none; }
-
         .modal { 
-            position: fixed; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            background: white; 
-            padding: 25px; 
-            border-radius: 20px; 
-            display: none; 
-            z-index: 200; 
-            pointer-events: auto; 
-            width: 85%; 
-            max-width: 320px; 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            background: white; padding: 25px; border-radius: 20px; display: none; 
+            z-index: 200; pointer-events: auto; width: 85%; max-width: 320px; 
             box-shadow: 0 10px 40px rgba(0,0,0,0.3); 
         }
         .modal h3 { margin-top: 0; color: #2c3e50; }
-        .modal input { 
-            width: 100%; 
-            padding: 12px; 
-            margin: 10px 0; 
-            border: 1px solid #ddd; 
-            border-radius: 10px; 
-            font-size: 16px; 
-            outline: none;
-            -webkit-appearance: none; /* 移除 iOS 預設樣式 */
-        }
+        .modal input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; -webkit-appearance: none; }
         .modal-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-
         #emptyState {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            text-align: center; color: #95a5a6; pointer-events: none;
-            width: 80%;
+            text-align: center; color: #95a5a6; pointer-events: none; width: 80%;
         }
-
-        /* 讓 Toast 避開 Home Indicator */
-        .toast-msg {
-            bottom: calc(100px + env(safe-area-inset-bottom)) !important;
-        }
+        .toast-msg { bottom: calc(100px + env(safe-area-inset-bottom)) !important; }
     </style>
 </head>
 <body>
@@ -123,15 +67,13 @@
 <div id="emptyState">
     <div style="font-size: 50px;">🌿</div>
     <h2>尚未添加植物</h2>
-    <p>點擊下方按鈕開始記錄您的第一盆植物</p>
-    <p style="font-size: 12px; color: #bdc3c7;">( 建議透過手機瀏覽器「加入主畫面」使用 )</p>
+    <p>點擊下方按鈕開始記錄</p>
 </div>
 
 <div id="ui-layer">
     <div class="btn-group">
         <button class="btn btn-main" onclick="openAddModal()">＋ 新增植物</button>
     </div>
-
     <div id="batchPanel" class="batch-panel">
         <b id="batchCount">已選取 0 棵植物</b>
         <div style="display:flex; gap:6px; flex-wrap: wrap; justify-content: center;">
@@ -142,12 +84,9 @@
             <button class="btn" style="background:#95a5a6; color:white; padding:8px 12px; font-size: 14px;" onclick="clearSelection()">取消</button>
         </div>
     </div>
-
     <div id="addModal" class="modal">
         <h3>🌱 新夥伴</h3>
-        <label style="font-size: 14px; color: #7f8c8d;">植物名稱</label>
         <input type="text" id="plantName" placeholder="例如：琴葉榕">
-        <label style="font-size: 14px; color: #7f8c8d;">澆水頻率 (天)</label>
         <input type="number" id="plantFreq" value="3" min="1" inputmode="numeric">
         <div class="modal-btns">
             <button class="btn btn-main" onclick="triggerUpload()">📷 上傳照片並儲存</button>
@@ -159,7 +98,7 @@
 <input type="file" id="fileInput" accept="image/*">
 
 <script>
-/** 1. 初始化與資料庫 **/
+/** 1. 資料與儲存 **/
 const DB_NAME = "PlantCareDB_v2";
 const STORE_NAME = "plants";
 let db, plants = [];
@@ -175,9 +114,7 @@ async function initDB() {
         const request = indexedDB.open(DB_NAME, 2);
         request.onupgradeneeded = e => {
             const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: "id" });
-            }
+            if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
         };
         request.onsuccess = e => { db = e.target.result; resolve(); };
     });
@@ -185,11 +122,9 @@ async function initDB() {
 
 async function loadData() {
     const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
     plants = await new Promise(res => {
-        store.getAll().onsuccess = e => res(e.target.result || []);
+        tx.objectStore(STORE_NAME).getAll().onsuccess = e => res(e.target.result || []);
     });
-    
     document.getElementById('emptyState').style.display = plants.length ? 'none' : 'block';
     processAndSort();
     render();
@@ -201,13 +136,9 @@ function saveData(plant) {
 }
 
 async function saveMultipleData(plantsArray) {
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        const store = tx.objectStore(STORE_NAME);
-        plantsArray.forEach(p => store.put(JSON.parse(JSON.stringify(p))));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject();
-    });
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    plantsArray.forEach(p => store.put(JSON.parse(JSON.stringify(p))));
 }
 
 function deleteFromDB(id) {
@@ -215,61 +146,34 @@ function deleteFromDB(id) {
     tx.objectStore(STORE_NAME).delete(id);
 }
 
-/** 2. 邏輯處理 **/
+/** 2. 核心邏輯 **/
 function processAndSort() {
     const now = Date.now();
     plants.forEach(p => {
-        const diff = now - p.lastWatered;
-        p.thirstIndex = diff / (p.freq * 86400000);
-        p.daysAgo = Math.floor(diff / 86400000);
-        
-        const formatDate = (ts) => {
-            if (!ts || ts === 0) return "無";
-            const d = new Date(ts);
-            return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}`;
-        };
-
-        p.lastDateFormatted = formatDate(p.lastWatered);
-        p.lastMedDateFormatted = formatDate(p.lastMedicated);
-        p.lastFertDateFormatted = formatDate(p.lastFertilized);
-
+        p.thirstIndex = (now - p.lastWatered) / (p.freq * 86400000);
+        p.daysAgo = Math.floor((now - p.lastWatered) / 86400000);
+        const fmt = (ts) => ts ? `${new Date(ts).getMonth()+1}/${new Date(ts).getDate()}` : "無";
+        p.lastDateFmt = fmt(p.lastWatered);
+        p.lastMedFmt = fmt(p.lastMedicated);
+        p.lastFertFmt = fmt(p.lastFertilized);
         if (p.selected === undefined) p.selected = false;
     });
     plants.sort((a, b) => b.thirstIndex - a.thirstIndex);
 }
 
-function createSnapshot() {
-    lastSnapshot = JSON.parse(JSON.stringify(plants));
-    document.getElementById('undoBtn').style.display = 'block';
-}
-
-async function undoAction() {
-    if (!lastSnapshot) return;
-    await saveMultipleData(lastSnapshot);
-    plants = JSON.parse(JSON.stringify(lastSnapshot));
-    lastSnapshot = null;
-    document.getElementById('undoBtn').style.display = 'none';
-    processAndSort();
-    updateBatchUI();
-    render();
-    showToast("↺ 已復原至上一個狀態");
-}
-
-/** 3. 圖片處理 (iOS 優化) **/
+/** 3. 圖片處理 **/
 async function processImage(file) {
     return new Promise(resolve => {
         const reader = new FileReader();
         reader.onload = e => {
             const img = new Image();
             img.onload = () => {
-                const tempCanvas = document.createElement('canvas');
-                const size = 500;
-                tempCanvas.width = size;
-                tempCanvas.height = size;
-                const tCtx = tempCanvas.getContext('2d');
+                const temp = document.createElement('canvas');
+                temp.width = temp.height = 500;
+                const tCtx = temp.getContext('2d');
                 const min = Math.min(img.width, img.height);
-                tCtx.drawImage(img, (img.width-min)/2, (img.height-min)/2, min, min, 0, 0, size, size);
-                resolve(tempCanvas.toDataURL('image/jpeg', 0.8)); 
+                tCtx.drawImage(img, (img.width-min)/2, (img.height-min)/2, min, min, 0, 0, 500, 500);
+                resolve(temp.toDataURL('image/jpeg', 0.8));
             };
             img.src = e.target.result;
         };
@@ -277,17 +181,16 @@ async function processImage(file) {
     });
 }
 
-/** 4. Canvas 繪製 (Retina 支援) **/
+/** 4. 繪製引擎 **/
 function resize() {
     dpr = window.devicePixelRatio || 1;
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
     ctx.scale(dpr, dpr);
-    
     cols = window.innerWidth > 600 ? 3 : 2;
     const padding = 15;
     cardW = (window.innerWidth - (padding * (cols + 1))) / cols;
-    cardH = cardW * 1.55; 
+    cardH = cardW * 1.65; 
     render();
 }
 
@@ -296,13 +199,14 @@ const imageCache = new Map();
 function render() {
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     const padding = 15;
-    const now = Date.now();
+    const topOffset = 20 + (window.innerHeight > 800 ? 20 : 0);
     
     plants.forEach((p, i) => {
         const x = padding + (i % cols) * (cardW + padding);
-        const y = padding + Math.floor(i / cols) * (cardH + padding) + (window.innerHeight > 800 ? 20 : 0);
+        const y = topOffset + Math.floor(i / cols) * (cardH + padding);
         p.rect = { x, y, w: cardW, h: cardH };
 
+        // 卡片背景
         ctx.fillStyle = "white";
         ctx.shadowBlur = 15; ctx.shadowColor = "rgba(0,0,0,0.06)";
         roundRect(ctx, x, y, cardW, cardH, 18, true);
@@ -310,8 +214,7 @@ function render() {
 
         // 缺水警告
         if(p.thirstIndex >= 1) {
-            ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3;
-            ctx.stroke();
+            ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3; ctx.stroke();
             ctx.fillStyle = "#e74c3c";
             ctx.beginPath(); ctx.arc(x + 22, y + 22, 11, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = "white"; ctx.font = "bold 13px Arial"; ctx.textAlign="center";
@@ -331,210 +234,125 @@ function render() {
             }
         }
 
-        // 文字
-        ctx.fillStyle = "#2d3436"; ctx.font = "bold 17px -apple-system";
-        ctx.fillText(truncate(p.name, 9), x+14, y + cardW + 18);
+        // 文字排版 - 嚴格座標控制
+        const textStartX = x + 14;
+        const textStartY = y + cardW + 22;
+        
+        ctx.fillStyle = "#2d3436"; ctx.font = "bold 16px -apple-system";
+        ctx.fillText(truncate(p.name, 9), textStartX, textStartY);
         
         ctx.font = "12px -apple-system";
+        // 澆水行
         ctx.fillStyle = p.thirstIndex >= 1 ? "#e74c3c" : "#636e72";
-        ctx.fillText(`${p.daysAgo} 天前澆水 (${p.lastDateFormatted})`, x+14, y + cardW + 38);
+        ctx.fillText(`${p.daysAgo} 天前澆水 (${p.lastDateFmt})`, textStartX, textStartY + 22);
+        
+        // 施藥行
         ctx.fillStyle = "#b2bec3";
-        ctx.fillText(`💊 施藥: ${p.lastMedDateFormatted}`, x+14, y + cardW + 56);
-        ctx.fillText(`✨ 施肥: ${p.lastFertDateFormatted}`, x+14, y + cardW + 74);
+        ctx.fillText(`💊 施藥: ${p.lastMedFmt}`, textStartX, textStartY + 42);
+        
+        // 施肥行
+        ctx.fillText(`✨ 施肥: ${p.lastFertFmt}`, textStartX, textStartY + 62);
 
         // 選取圈圈
-        ctx.beginPath();
-        ctx.arc(x + cardW - 22, y + 22, 13, 0, Math.PI*2);
-        ctx.fillStyle = p.selected ? "#3498db" : "rgba(255,255,255,0.9)";
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(x + cardW - 22, y + 22, 13, 0, Math.PI*2);
+        ctx.fillStyle = p.selected ? "#3498db" : "rgba(255,255,255,0.9)"; ctx.fill();
         ctx.strokeStyle = "#3498db"; ctx.lineWidth = 2; ctx.stroke();
         if(p.selected) {
             ctx.fillStyle = "white"; ctx.font = "bold 15px Arial"; ctx.textAlign="center";
             ctx.fillText("✓", x + cardW - 22, y + 27); ctx.textAlign="left";
         }
 
-        // 按鈕
-        const btnY = y + cardH - 30;
-        p.btnWater = {x: x+10, y: btnY-15, w: 45, h: 45};
-        p.btnMed = {x: x+cardW/2-22, y: btnY-15, w: 45, h: 45};
-        p.btnFert = {x: x+cardW-55, y: btnY-15, w: 45, h: 45};
+        // 底部按鈕區 - 加圓角背景提升點擊感
+        const btnRowY = y + cardH - 35;
+        const btnSpacing = cardW / 3;
         
-        drawIcon(ctx, "💧", p.btnWater.x + 22, btnY);
-        drawIcon(ctx, "🧪", p.btnMed.x + 22, btnY);
-        drawIcon(ctx, "💩", p.btnFert.x + 22, btnY);
+        p.btnWater = { x: x + (btnSpacing*0.5) - 20, y: btnRowY - 20, w: 40, h: 40 };
+        p.btnMed = { x: x + (btnSpacing*1.5) - 20, y: btnRowY - 20, w: 40, h: 40 };
+        p.btnFert = { x: x + (btnSpacing*2.5) - 20, y: btnRowY - 20, w: 40, h: 40 };
+
+        [p.btnWater, p.btnMed, p.btnFert].forEach((btn, idx) => {
+            ctx.fillStyle = "#f1f2f6";
+            ctx.beginPath(); ctx.arc(btn.x + 20, btn.y + 20, 18, 0, Math.PI*2); ctx.fill();
+            const icon = ["💧", "🧪", "💩"][idx];
+            ctx.font = "20px Arial"; ctx.textAlign = "center";
+            ctx.fillText(icon, btn.x + 20, btn.y + 27); ctx.textAlign = "left";
+        });
     });
 }
 
-function drawIcon(ctx, icon, x, y) {
-    ctx.font = "24px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(icon, x, y);
-    ctx.textAlign = "left";
-}
-
-/** 5. 互動處理 (支援 iOS Touch) **/
-canvas.addEventListener('mousedown', (e) => handleClick(e));
-canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    handleClick(e.touches[0]);
-}, {passive: false});
+/** 5. 互動處理 **/
+canvas.addEventListener('mousedown', handleClick);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); handleClick(e.touches[0]); }, {passive: false});
 
 function handleClick(e) {
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX || e.pageX) - rect.left;
     const my = (e.clientY || e.pageY) - rect.top;
-
     let hit = false;
+
     plants.forEach(p => {
         if(dist(mx, my, p.rect.x + p.rect.w - 22, p.rect.y + 22) < 28) {
-            p.selected = !p.selected;
-            updateBatchUI();
-            hit = true;
-        }
-        else if(isInside(mx, my, p.btnWater)) {
-            createSnapshot();
-            p.lastWatered = Date.now();
-            saveData(p); processAndSort();
-            showToast(`已更新 ${p.name} 的澆水紀錄`);
-            hit = true;
-        }
-        else if(isInside(mx, my, p.btnMed)) {
-            createSnapshot();
-            p.lastMedicated = Date.now();
-            saveData(p); processAndSort();
-            showToast(`已為 ${p.name} 記錄施藥`);
-            hit = true;
-        }
-        else if(isInside(mx, my, p.btnFert)) {
-            createSnapshot();
-            p.lastFertilized = Date.now();
-            saveData(p); processAndSort();
-            showToast(`已為 ${p.name} 記錄施肥`);
-            hit = true;
+            p.selected = !p.selected; updateBatchUI(); hit = true;
+        } else if(isInside(mx, my, p.btnWater)) {
+            snap(); p.lastWatered = Date.now(); saveData(p); processAndSort(); hit = true;
+        } else if(isInside(mx, my, p.btnMed)) {
+            snap(); p.lastMedicated = Date.now(); saveData(p); processAndSort(); hit = true;
+        } else if(isInside(mx, my, p.btnFert)) {
+            snap(); p.lastFertilized = Date.now(); saveData(p); processAndSort(); hit = true;
         }
     });
     if(hit) render();
 }
 
 /** 6. UI 功能 **/
-function openAddModal() { 
-    document.getElementById('addModal').style.display = 'block';
-    document.getElementById('plantName').focus();
-}
-function closeModal() { document.getElementById('addModal').style.display = 'none'; }
+function openAddModal() { document.getElementById('addModal').style.display='block'; }
+function closeModal() { document.getElementById('addModal').style.display='none'; }
 function triggerUpload() { fileInput.click(); }
+function snap() { lastSnapshot = JSON.parse(JSON.stringify(plants)); document.getElementById('undoBtn').style.display='block'; }
 
 fileInput.onchange = async e => {
     if(!e.target.files[0]) return;
     const name = document.getElementById('plantName').value || "小植物";
     const freq = parseInt(document.getElementById('plantFreq').value) || 3;
     const imgData = await processImage(e.target.files[0]);
-    
-    const newPlant = {
-        id: "p_" + Date.now(),
-        name, freq, imageStr: imgData,
-        lastWatered: Date.now(),
-        lastFertilized: 0, lastMedicated: 0,
-        selected: false
-    };
-    
-    plants.push(newPlant);
-    saveData(newPlant);
-    processAndSort();
-    closeModal();
-    document.getElementById('emptyState').style.display = 'none';
-    render();
-    fileInput.value = ""; 
+    const newP = { id: "p_"+Date.now(), name, freq, imageStr: imgData, lastWatered: Date.now(), lastFertilized: 0, lastMedicated: 0, selected: false };
+    plants.push(newP); saveData(newP); processAndSort(); closeModal();
+    document.getElementById('emptyState').style.display = 'none'; render(); fileInput.value = ""; 
 };
 
 function updateBatchUI() {
-    const selected = plants.filter(p => p.selected);
+    const sel = plants.filter(p => p.selected);
     const panel = document.getElementById('batchPanel');
-    if(selected.length > 0 || lastSnapshot !== null) {
+    if(sel.length > 0 || lastSnapshot) {
         panel.style.display = 'flex';
-        document.getElementById('batchCount').innerText = `已選取 ${selected.length} 棵植物`;
+        document.getElementById('batchCount').innerText = `已選取 ${sel.length} 棵植物`;
         document.getElementById('undoBtn').style.display = lastSnapshot ? 'block' : 'none';
-    } else {
-        panel.style.display = 'none';
-    }
+    } else panel.style.display = 'none';
 }
 
 async function batchWatering() {
-    const selectedPlants = plants.filter(p => p.selected);
-    if (selectedPlants.length === 0) return;
-    createSnapshot();
-    selectedPlants.forEach(p => { p.lastWatered = Date.now(); p.selected = false; });
-    await saveMultipleData(selectedPlants);
-    processAndSort();
-    updateBatchUI();
-    render();
-    showToast(`成功記錄 ${selectedPlants.length} 棵植物澆水`);
+    const sel = plants.filter(p => p.selected);
+    if (!sel.length) return; snap();
+    sel.forEach(p => { p.lastWatered = Date.now(); p.selected = false; });
+    await saveMultipleData(sel); processAndSort(); updateBatchUI(); render();
 }
 
-async function batchDelete() {
-    const selectedPlants = plants.filter(p => p.selected);
-    if (selectedPlants.length === 0) return;
-    if(confirm(`確定要刪除選中的 ${selectedPlants.length} 棵植物嗎？`)) {
-        createSnapshot();
-        selectedPlants.forEach(p => deleteFromDB(p.id));
-        plants = plants.filter(p => !p.selected);
-        if(plants.length === 0) document.getElementById('emptyState').style.display = 'block';
-        updateBatchUI();
-        render();
-        showToast("已刪除選取的紀錄");
-    }
-}
+function clearSelection() { plants.forEach(p => p.selected = false); updateBatchUI(); render(); }
+function undoAction() { if(!lastSnapshot) return; plants = JSON.parse(JSON.stringify(lastSnapshot)); lastSnapshot = null; processAndSort(); updateBatchUI(); render(); }
 
-async function openBatchFreq() {
-    const selectedPlants = plants.filter(p => p.selected);
-    if (selectedPlants.length === 0) return;
-    const newFreq = prompt(`統一設定澆水頻率(天):`, "7");
-    if(newFreq && !isNaN(newFreq)) {
-        createSnapshot();
-        selectedPlants.forEach(p => { p.freq = parseInt(newFreq); p.selected = false; });
-        await saveMultipleData(selectedPlants);
-        processAndSort();
-        updateBatchUI();
-        render();
-        showToast(`頻率已更新為 ${newFreq} 天`);
-    }
-}
-
-function clearSelection() {
-    plants.forEach(p => p.selected = false);
-    updateBatchUI(); render();
-}
-
-/** 工具類 **/
-function isInside(x, y, rect) { return x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h; }
+/** 工具 **/
+function isInside(x, y, r) { return x>=r.x && x<=r.x+r.w && y>=r.y && y<=r.y+r.h; }
 function dist(x1, y1, x2, y2) { return Math.sqrt((x2-x1)**2 + (y2-y1)**2); }
-function truncate(str, n) { return (str.length > n) ? str.substr(0, n-1) + '...' : str; }
-function roundRect(ctx, x, y, width, height, radius, fill) {
-    ctx.beginPath(); ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y); ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius); ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height); ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius); ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-    if (fill) ctx.fill();
+function truncate(s, n) { return s.length > n ? s.substr(0, n-1) + "…" : s; }
+function roundRect(ctx, x, y, w, h, r, fill) {
+    ctx.beginPath(); ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+    ctx.closePath(); if (fill) ctx.fill();
 }
 
-function showToast(msg) {
-    const oldToast = document.querySelector('.toast-msg');
-    if (oldToast) oldToast.remove();
-    const toast = document.createElement('div');
-    toast.className = 'toast-msg';
-    toast.style = "position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:rgba(46, 204, 113, 0.95); color:white; padding:12px 25px; border-radius:30px; z-index:1000; transition:opacity 0.3s; font-weight:bold; box-shadow:0 4px 15px rgba(0,0,0,0.2); pointer-events:none; white-space:nowrap;";
-    toast.innerText = msg;
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2500);
-}
-
-window.onload = async () => {
-    await initDB();
-    await loadData();
-    resize();
-};
+window.onload = async () => { await initDB(); await loadData(); resize(); };
 window.onresize = resize;
 </script>
 </body>
