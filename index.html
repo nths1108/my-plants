@@ -24,6 +24,7 @@
         }
         canvas { display: block; width: 100%; height: 100%; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
         .btn { 
             pointer-events: auto; border: none; padding: 12px 24px; border-radius: 25px; 
             font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
@@ -31,10 +32,12 @@
         }
         .btn:active { transform: scale(0.95); opacity: 0.8; }
         .btn-main { background: var(--primary); color: white; }
+        
         .btn-group { 
             position: fixed; bottom: calc(30px + env(safe-area-inset-bottom)); 
             left: 50%; transform: translateX(-50%); display: flex; gap: 15px; 
         }
+        
         .batch-panel { 
             position: fixed; top: calc(20px + env(safe-area-inset-top)); 
             left: 50%; transform: translateX(-50%); 
@@ -43,7 +46,9 @@
             align-items: center; gap: 10px; z-index: 100; pointer-events: auto; width: 85%; max-width: 420px;
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         }
+        
         #fileInput { display: none; }
+
         .modal { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
             background: white; padding: 25px; border-radius: 20px; display: none; 
@@ -53,6 +58,7 @@
         .modal h3 { margin-top: 0; color: #2c3e50; }
         .modal input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; -webkit-appearance: none; }
         .modal-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        
         #emptyState {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             text-align: center; color: #95a5a6; pointer-events: none; width: 80%;
@@ -74,6 +80,7 @@
     <div class="btn-group">
         <button class="btn btn-main" onclick="openAddModal()">＋ 新增植物</button>
     </div>
+
     <div id="batchPanel" class="batch-panel">
         <b id="batchCount">已選取 0 棵植物</b>
         <div style="display:flex; gap:6px; flex-wrap: wrap; justify-content: center;">
@@ -84,6 +91,7 @@
             <button class="btn" style="background:#95a5a6; color:white; padding:8px 12px; font-size: 14px;" onclick="clearSelection()">取消</button>
         </div>
     </div>
+
     <div id="addModal" class="modal">
         <h3>🌱 新夥伴</h3>
         <input type="text" id="plantName" placeholder="例如：琴葉榕">
@@ -190,7 +198,7 @@ function resize() {
     cols = window.innerWidth > 600 ? 3 : 2;
     const padding = 15;
     cardW = (window.innerWidth - (padding * (cols + 1))) / cols;
-    cardH = cardW * 1.65; 
+    cardH = cardW * 1.85; // 再加長格子高度，確保按鈕有專屬空間
     render();
 }
 
@@ -199,7 +207,7 @@ const imageCache = new Map();
 function render() {
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     const padding = 15;
-    const topOffset = 20 + (window.innerHeight > 800 ? 20 : 0);
+    const topOffset = 25 + (window.innerHeight > 800 ? 25 : 0);
     
     plants.forEach((p, i) => {
         const x = padding + (i % cols) * (cardW + padding);
@@ -209,17 +217,8 @@ function render() {
         // 卡片背景
         ctx.fillStyle = "white";
         ctx.shadowBlur = 15; ctx.shadowColor = "rgba(0,0,0,0.06)";
-        roundRect(ctx, x, y, cardW, cardH, 18, true);
+        roundRect(ctx, x, y, cardW, cardH, 20, true);
         ctx.shadowBlur = 0;
-
-        // 缺水警告
-        if(p.thirstIndex >= 1) {
-            ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3; ctx.stroke();
-            ctx.fillStyle = "#e74c3c";
-            ctx.beginPath(); ctx.arc(x + 22, y + 22, 11, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "white"; ctx.font = "bold 13px Arial"; ctx.textAlign="center";
-            ctx.fillText("!", x + 22, y + 27); ctx.textAlign="left";
-        }
 
         // 圖片
         if(p.imageStr) {
@@ -228,54 +227,65 @@ function render() {
                 img.onload = () => { imageCache.set(p.id, img); render(); };
             } else {
                 ctx.save();
-                ctx.beginPath(); roundRect(ctx, x+10, y+10, cardW-20, cardW-20, 14); ctx.clip();
+                ctx.beginPath(); roundRect(ctx, x+10, y+10, cardW-20, cardW-20, 16); ctx.clip();
                 ctx.drawImage(imageCache.get(p.id), x+10, y+10, cardW-20, cardW-20);
                 ctx.restore();
             }
         }
 
-        // 文字排版 - 嚴格座標控制
+        // 文字排版 - 嚴格垂直間距
         const textStartX = x + 14;
-        const textStartY = y + cardW + 22;
+        const textStartY = y + cardW + 25; // 照片下方開始
         
-        ctx.fillStyle = "#2d3436"; ctx.font = "bold 16px -apple-system";
+        ctx.fillStyle = "#2d3436"; ctx.font = "bold 18px -apple-system";
         ctx.fillText(truncate(p.name, 9), textStartX, textStartY);
         
-        ctx.font = "12px -apple-system";
-        // 澆水行
+        ctx.font = "13px -apple-system";
+        // 澆水行 (Y + 24)
         ctx.fillStyle = p.thirstIndex >= 1 ? "#e74c3c" : "#636e72";
-        ctx.fillText(`${p.daysAgo} 天前澆水 (${p.lastDateFmt})`, textStartX, textStartY + 22);
+        ctx.fillText(`${p.daysAgo} 天前澆水 (${p.lastDateFmt})`, textStartX, textStartY + 24);
         
-        // 施藥行
-        ctx.fillStyle = "#b2bec3";
-        ctx.fillText(`💊 施藥: ${p.lastMedFmt}`, textStartX, textStartY + 42);
+        // 施藥行 (Y + 44)
+        ctx.fillStyle = "#95a5a6";
+        ctx.fillText(`💊 施藥: ${p.lastMedFmt}`, textStartX, textStartY + 44);
         
-        // 施肥行
-        ctx.fillText(`✨ 施肥: ${p.lastFertFmt}`, textStartX, textStartY + 62);
+        // 施肥行 (Y + 64)
+        ctx.fillText(`✨ 施肥: ${p.lastFertFmt}`, textStartX, textStartY + 64);
+
+        // 缺水標記
+        if(p.thirstIndex >= 1) {
+            ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3; ctx.stroke();
+            ctx.fillStyle = "#e74c3c";
+            ctx.beginPath(); ctx.arc(x + 22, y + 22, 11, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "white"; ctx.font = "bold 13px Arial"; ctx.textAlign="center";
+            ctx.fillText("!", x + 22, y + 27); ctx.textAlign="left";
+        }
 
         // 選取圈圈
-        ctx.beginPath(); ctx.arc(x + cardW - 22, y + 22, 13, 0, Math.PI*2);
+        ctx.beginPath(); ctx.arc(x + cardW - 25, y + 25, 14, 0, Math.PI*2);
         ctx.fillStyle = p.selected ? "#3498db" : "rgba(255,255,255,0.9)"; ctx.fill();
         ctx.strokeStyle = "#3498db"; ctx.lineWidth = 2; ctx.stroke();
         if(p.selected) {
-            ctx.fillStyle = "white"; ctx.font = "bold 15px Arial"; ctx.textAlign="center";
-            ctx.fillText("✓", x + cardW - 22, y + 27); ctx.textAlign="left";
+            ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.textAlign="center";
+            ctx.fillText("✓", x + cardW - 25, y + 31); ctx.textAlign="left";
         }
 
-        // 底部按鈕區 - 加圓角背景提升點擊感
-        const btnRowY = y + cardH - 35;
+        // 底部按鈕區 - 將按鈕推向卡片最底部，並增加背景圓圈
+        const btnRowY = y + cardH - 38;
         const btnSpacing = cardW / 3;
         
-        p.btnWater = { x: x + (btnSpacing*0.5) - 20, y: btnRowY - 20, w: 40, h: 40 };
-        p.btnMed = { x: x + (btnSpacing*1.5) - 20, y: btnRowY - 20, w: 40, h: 40 };
-        p.btnFert = { x: x + (btnSpacing*2.5) - 20, y: btnRowY - 20, w: 40, h: 40 };
+        p.btnWater = { x: x + (btnSpacing*0.5) - 22, y: btnRowY - 22, w: 44, h: 44 };
+        p.btnMed = { x: x + (btnSpacing*1.5) - 22, y: btnRowY - 22, w: 44, h: 44 };
+        p.btnFert = { x: x + (btnSpacing*2.5) - 22, y: btnRowY - 22, w: 44, h: 44 };
 
         [p.btnWater, p.btnMed, p.btnFert].forEach((btn, idx) => {
+            // 按鈕灰色背景
             ctx.fillStyle = "#f1f2f6";
-            ctx.beginPath(); ctx.arc(btn.x + 20, btn.y + 20, 18, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(btn.x + 22, btn.y + 22, 20, 0, Math.PI*2); ctx.fill();
+            // 圖示
             const icon = ["💧", "🧪", "💩"][idx];
-            ctx.font = "20px Arial"; ctx.textAlign = "center";
-            ctx.fillText(icon, btn.x + 20, btn.y + 27); ctx.textAlign = "left";
+            ctx.font = "24px Arial"; ctx.textAlign = "center";
+            ctx.fillText(icon, btn.x + 22, btn.y + 30); ctx.textAlign = "left";
         });
     });
 }
@@ -291,7 +301,7 @@ function handleClick(e) {
     let hit = false;
 
     plants.forEach(p => {
-        if(dist(mx, my, p.rect.x + p.rect.w - 22, p.rect.y + 22) < 28) {
+        if(dist(mx, my, p.rect.x + p.rect.w - 25, p.rect.y + 25) < 30) {
             p.selected = !p.selected; updateBatchUI(); hit = true;
         } else if(isInside(mx, my, p.btnWater)) {
             snap(); p.lastWatered = Date.now(); saveData(p); processAndSort(); hit = true;
@@ -338,7 +348,29 @@ async function batchWatering() {
 }
 
 function clearSelection() { plants.forEach(p => p.selected = false); updateBatchUI(); render(); }
-function undoAction() { if(!lastSnapshot) return; plants = JSON.parse(JSON.stringify(lastSnapshot)); lastSnapshot = null; processAndSort(); updateBatchUI(); render(); }
+function undoAction() { if(!lastSnapshot) return; plants = JSON.parse(JSON.stringify(lastSnapshot)); lastSnapshot = null; processAndSort(); updateBatchUI(); render(); showToast("↺ 已復原"); }
+
+function batchDelete() {
+    const sel = plants.filter(p => p.selected);
+    if(!sel.length) return;
+    if(confirm(`確定刪除 ${sel.length} 棵植物？`)) {
+        snap();
+        sel.forEach(p => deleteFromDB(p.id));
+        plants = plants.filter(p => !p.selected);
+        if(!plants.length) document.getElementById('emptyState').style.display='block';
+        updateBatchUI(); render();
+    }
+}
+
+async function openBatchFreq() {
+    const sel = plants.filter(p => p.selected);
+    const f = prompt("設定頻率(天):", "7");
+    if(f && !isNaN(f)) {
+        snap();
+        sel.forEach(p => { p.freq = parseInt(f); p.selected = false; });
+        await saveMultipleData(sel); processAndSort(); updateBatchUI(); render();
+    }
+}
 
 /** 工具 **/
 function isInside(x, y, r) { return x>=r.x && x<=r.x+r.w && y>=r.y && y<=r.y+r.h; }
@@ -350,6 +382,14 @@ function roundRect(ctx, x, y, w, h, r, fill) {
     ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
     ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
     ctx.closePath(); if (fill) ctx.fill();
+}
+
+function showToast(msg) {
+    const old = document.querySelector('.toast-msg'); if(old) old.remove();
+    const t = document.createElement('div'); t.className='toast-msg';
+    t.style = "position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:rgba(46, 204, 113, 0.9); color:white; padding:10px 20px; border-radius:30px; z-index:1000; font-weight:bold; pointer-events:none;";
+    t.innerText = msg; document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 2000);
 }
 
 window.onload = async () => { await initDB(); await loadData(); resize(); };
