@@ -117,12 +117,15 @@ const ctx = canvas.getContext('2d');
 const fileInput = document.getElementById('fileInput');
 let cardW, cardH, cols, dpr;
 
-// 滾動相關變數
+// 滾動與慣性系統變數
 let scrollY = 0;
 let isDragging = false;
 let startY = 0;
 let lastY = 0;
+let velocity = 0;
 let totalHeight = 0;
+let lastMoveTime = 0;
+let animationFrame;
 
 async function initDB() {
     return new Promise(resolve => {
@@ -207,20 +210,24 @@ function resize() {
     cardW = (window.innerWidth - (padding * (cols + 1))) / cols;
     cardH = cardW * 1.85; 
     
-    // 計算總高度
     const rows = Math.ceil(plants.length / cols);
     const topOffset = 25 + (window.innerHeight > 800 ? 25 : 0);
-    totalHeight = topOffset + rows * (cardH + padding) + 120; // 底部留白讓按鈕不遮擋
+    totalHeight = topOffset + rows * (cardH + padding) + 140; 
     
-    // 檢查 scrollY 是否超出新界限
     clampScroll();
     render();
 }
 
 function clampScroll() {
     const maxScroll = Math.max(0, totalHeight - window.innerHeight);
-    if (scrollY > maxScroll) scrollY = maxScroll;
-    if (scrollY < 0) scrollY = 0;
+    if (scrollY > maxScroll) {
+        scrollY = maxScroll;
+        velocity = 0;
+    }
+    if (scrollY < 0) {
+        scrollY = 0;
+        velocity = 0;
+    }
 }
 
 const imageCache = new Map();
@@ -232,20 +239,16 @@ function render() {
     
     plants.forEach((p, i) => {
         const x = padding + (i % cols) * (cardW + padding);
-        // 套用 scrollY 偏移
         const y = topOffset + Math.floor(i / cols) * (cardH + padding) - scrollY;
         p.rect = { x, y, w: cardW, h: cardH };
 
-        // 只繪製在畫面內的卡片以節省效能
-        if (y + cardH < 0 || y > window.innerHeight) return;
+        if (y + cardH < -100 || y > window.innerHeight + 100) return;
 
-        // 卡片背景
         ctx.fillStyle = "white";
         ctx.shadowBlur = 15; ctx.shadowColor = "rgba(0,0,0,0.06)";
         roundRect(ctx, x, y, cardW, cardH, 20, true);
         ctx.shadowBlur = 0;
 
-        // 圖片
         if(p.imageStr) {
             if(!imageCache.has(p.id)) {
                 const img = new Image(); img.src = p.imageStr;
@@ -258,7 +261,6 @@ function render() {
             }
         }
 
-        // 文字排版
         const textStartX = x + 14;
         const textStartY = y + cardW + 25;
         
@@ -273,7 +275,6 @@ function render() {
         ctx.fillText(`💊 施藥: ${p.lastMedFmt}`, textStartX, textStartY + 44);
         ctx.fillText(`✨ 施肥: ${p.lastFertFmt}`, textStartX, textStartY + 64);
 
-        // 缺水標記
         if(p.thirstIndex >= 1) {
             ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3; ctx.stroke();
             ctx.fillStyle = "#e74c3c";
@@ -282,7 +283,6 @@ function render() {
             ctx.fillText("!", x + 22, y + 27); ctx.textAlign="left";
         }
 
-        // 選取圈圈
         ctx.beginPath(); ctx.arc(x + cardW - 25, y + 25, 14, 0, Math.PI*2);
         ctx.fillStyle = p.selected ? "#3498db" : "rgba(255,255,255,0.9)"; ctx.fill();
         ctx.strokeStyle = "#3498db"; ctx.lineWidth = 2; ctx.stroke();
@@ -291,7 +291,6 @@ function render() {
             ctx.fillText("✓", x + cardW - 25, y + 31); ctx.textAlign="left";
         }
 
-        // 底部按鈕區
         const btnRowY = y + cardH - 38;
         const btnSpacing = cardW / 3;
         
@@ -309,54 +308,96 @@ function render() {
     });
 }
 
-/** 5. 互動處理 (滑動與點擊) **/
+/** 5. 慣性滑動系統 **/
 
-// 處理滾動
-canvas.addEventListener('touchstart', e => {
+function applyInertia() {
+    if (Math.abs(velocity) > 0.1) {
+        scrollY += velocity;
+        velocity *= 0.95; // 摩擦係數 (阻尼)
+        clampScroll();
+        render();
+        animationFrame = requestAnimationFrame(applyInertia);
+    } else {
+        velocity = 0;
+    }
+}
+
+function handleStart(y) {
+    cancelAnimationFrame(animationFrame);
     isDragging = true;
-    startY = e.touches[0].pageY;
-    lastY = startY;
+    startY = y;
+    lastY = y;
+    velocity = 0;
+    lastMoveTime = Date.now();
+}
+
+function handleMove(y) {
+    if (!isDragging) return;
+    const now = Date.now();
+    const dt = now - lastMoveTime;
+    const dy = lastY - y;
+    
+    scrollY += dy;
+    // 計算即時速度 (用於慣性)
+    if (dt > 0) {
+        velocity = (dy / dt) * 16; // 模擬 60fps 下的單格位移
+    }
+    
+    lastY = y;
+    lastMoveTime = now;
+    clampScroll();
+    render();
+}
+
+function handleEnd(y) {
+    isDragging = false;
+    // 如果手指放開時還有速度，啟動慣性
+    if (Math.abs(velocity) > 2) {
+        applyInertia();
+    }
+    
+    // 如果位移極小，視為點擊 (這在 touch 事件中由 touchend 判定位移)
+}
+
+// 事件監聽 (Touch)
+canvas.addEventListener('touchstart', e => {
+    handleStart(e.touches[0].pageY);
+    window.tapStartX = e.touches[0].pageX;
+    window.tapStartY = e.touches[0].pageY;
 }, { passive: false });
 
 canvas.addEventListener('touchmove', e => {
-    if (!isDragging) return;
-    const currentY = e.touches[0].pageY;
-    const delta = lastY - currentY;
-    scrollY += delta;
-    lastY = currentY;
-    clampScroll();
-    render();
+    e.preventDefault();
+    handleMove(e.touches[0].pageY);
 }, { passive: false });
 
 canvas.addEventListener('touchend', e => {
-    isDragging = false;
-    // 如果移動距離很小，視為點擊
-    if (Math.abs(e.changedTouches[0].pageY - startY) < 5) {
+    handleEnd(e.changedTouches[0].pageY);
+    // 點擊判定：位移小於 10px
+    const dx = e.changedTouches[0].pageX - window.tapStartX;
+    const dy = e.changedTouches[0].pageY - window.tapStartY;
+    if (Math.sqrt(dx*dx + dy*dy) < 10) {
         handleClick(e.changedTouches[0]);
     }
 }, { passive: false });
 
-// 支援滑鼠滾動
+// 事件監聽 (Mouse)
 canvas.addEventListener('mousedown', e => {
-    isDragging = true;
-    startY = e.pageY;
-    lastY = startY;
+    handleStart(e.pageY);
+    window.mouseStartX = e.pageX;
+    window.mouseStartY = e.pageY;
 });
 
 window.addEventListener('mousemove', e => {
-    if (!isDragging) return;
-    const currentY = e.pageY;
-    const delta = lastY - currentY;
-    scrollY += delta;
-    lastY = currentY;
-    clampScroll();
-    render();
+    handleMove(e.pageY);
 });
 
 window.addEventListener('mouseup', e => {
     if (!isDragging) return;
-    isDragging = false;
-    if (Math.abs(e.pageY - startY) < 5) {
+    handleEnd(e.pageY);
+    const dx = e.pageX - window.mouseStartX;
+    const dy = e.pageY - window.mouseStartY;
+    if (Math.sqrt(dx*dx + dy*dy) < 10) {
         handleClick(e);
     }
 });
@@ -364,7 +405,7 @@ window.addEventListener('mouseup', e => {
 function handleClick(e) {
     const rect = canvas.getBoundingClientRect();
     const mx = (e.clientX || e.pageX) - rect.left;
-    const my = (e.clientY || e.pageY) - rect.top; // 這裡不加 scrollY，因為 p.rect 已經包含偏移了
+    const my = (e.clientY || e.pageY) - rect.top;
     let hit = false;
 
     plants.forEach(p => {
@@ -394,7 +435,7 @@ fileInput.onchange = async e => {
     const imgData = await processImage(e.target.files[0]);
     const newP = { id: "p_"+Date.now(), name, freq, imageStr: imgData, lastWatered: Date.now(), lastFertilized: 0, lastMedicated: 0, selected: false };
     plants.push(newP); saveData(newP); processAndSort(); 
-    resize(); // 重新計算高度
+    resize();
     closeModal();
     document.getElementById('emptyState').style.display = 'none'; render(); fileInput.value = ""; 
 };
@@ -427,7 +468,7 @@ function batchDelete() {
         sel.forEach(p => deleteFromDB(p.id));
         plants = plants.filter(p => !p.selected);
         if(!plants.length) document.getElementById('emptyState').style.display='block';
-        resize(); // 重新計算高度
+        resize();
         updateBatchUI(); render();
     }
 }
